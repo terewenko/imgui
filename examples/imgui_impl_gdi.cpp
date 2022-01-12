@@ -445,7 +445,7 @@ namespace imgui_sw
         // ImGui uses the first pixel for "white".
         const ImVec2 white_uv = ImVec2(0.5f / texture->width, 0.5f / texture->height);
 
-        for (int i = 0; i + 3 <= pcmd.ElemCount; ) {
+        for (unsigned int i = 0; i + 3 <= pcmd.ElemCount; ) {
             const ImDrawVert& v0 = vertices[idx_buffer[i + 0]];
             const ImDrawVert& v1 = vertices[idx_buffer[i + 1]];
             const ImDrawVert& v2 = vertices[idx_buffer[i + 2]];
@@ -697,7 +697,7 @@ void ImGui_ImplGDI_SetBackgroundColor(ImVec4* BackgroundColor)
     }
 
     g_BackgroundColorBrush = CreateSolidBrush(RGB(
-        BackgroundColor->x * 256.0,
-        BackgroundColor->y * 256.0,
-        BackgroundColor->z * 256.0));
+        BackgroundColor->x * 255.0,
+        BackgroundColor->y * 255.0,
+        BackgroundColor->z * 255.0));
 }
