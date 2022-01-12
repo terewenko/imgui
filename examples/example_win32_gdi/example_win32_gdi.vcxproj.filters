@@ -24,6 +24,7 @@
     <ClInclude Include="..\imgui_impl_gdi.h">
       <Filter>sources</Filter>
     </ClInclude>
+    <ClInclude Include="GdiTexture.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\imgui.cpp">

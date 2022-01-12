@@ -63,9 +63,11 @@ namespace imgui_sw
 
     struct Texture
     {
-        const uint8_t* pixels; // 8-bit.
+        uint8_t*       pixels; // 8-bit.
         int            width;
         int            height;
+        int            channels = 1;
+        bool           from_file;
     };
 
     struct PaintTarget
@@ -236,7 +238,7 @@ namespace imgui_sw
         return (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
     }
 
-    inline uint8_t sample_texture(const Texture& texture, const ImVec2& uv)
+    inline uint8_t sample_texture(const Texture& texture, const ImVec2& uv, int channels, int current_channel)
     {
         int tx = static_cast<int>(uv.x * (texture.width - 1.0f) + 0.5f);
         int ty = static_cast<int>(uv.y * (texture.height - 1.0f) + 0.5f);
@@ -247,7 +249,7 @@ namespace imgui_sw
         ty = std::max(ty, 0);
         ty = std::min(ty, texture.height - 1);
 
-        return texture.pixels[ty * texture.width + tx];
+        return texture.pixels[ty * (texture.width * channels) + (tx * channels) + current_channel];
     }
 
     // When two triangles share an edge, we want to draw the pixels on that edge exactly once.
@@ -413,7 +415,28 @@ namespace imgui_sw
                 if (texture) {
                     stats->textured_triangle_pixels += 1;
                     const ImVec2 uv = w0 * v0.uv + w1 * v1.uv + w2 * v2.uv;
-                    src_color.w *= sample_texture(*texture, uv) / 255.0f;
+                    switch (texture->channels)
+                    {
+                    case 1:
+                    {
+                        src_color.w *= sample_texture(*texture, uv, 1, 0) / 255.0f;
+                    } break;
+                    case 3:
+                    {
+                        src_color.x *= sample_texture(*texture, uv, 3, 0) / 255.0f;
+                        src_color.y *= sample_texture(*texture, uv, 3, 1) / 255.0f;
+                        src_color.z *= sample_texture(*texture, uv, 3, 2) / 255.0f;
+                    } break;
+                    case 4:
+                    {
+                        src_color.x *= sample_texture(*texture, uv, 4, 0) / 255.0f;
+                        src_color.y *= sample_texture(*texture, uv, 4, 1) / 255.0f;
+                        src_color.z *= sample_texture(*texture, uv, 4, 2) / 255.0f;
+                        src_color.w *= sample_texture(*texture, uv, 4, 3) / 255.0f;
+                    } break;
+                    default:
+                        break;
+                    }
                 }
 
                 if (src_color.w <= 0.0f) { continue; } // Transparent.
@@ -700,4 +723,65 @@ void ImGui_ImplGDI_SetBackgroundColor(ImVec4* BackgroundColor)
         BackgroundColor->x * 255.0,
         BackgroundColor->y * 255.0,
         BackgroundColor->z * 255.0));
+}
+
+
+#include <unordered_set>
+#include <memory>
+#include <stb_image.h>
+#include "example_win32_gdi/GdiTexture.hpp"
+
+
+static std::unordered_set<imgui_sw::Texture*> g_TextureIDs;
+
+ImTextureID LoadTextureFromFile(const char* filename)
+{
+    imgui_sw::Texture texture;
+    texture.pixels = stbi_load(filename, &texture.width, &texture.height, &texture.channels, 0);
+    texture.from_file = true;
+    if (texture.pixels)
+    {
+        return (ImTextureID)*g_TextureIDs.insert(new imgui_sw::Texture(std::move(texture))).first;
+    }
+    return (ImTextureID)nullptr;
+}
+
+ImTextureID LoadTextureFromMemory(unsigned char* data, int width, int height, int channels)
+{
+    assert(channels > 0 && width > 0 && height > 0);
+    if (data == nullptr)
+    {
+        return (ImTextureID)nullptr;
+    }
+    imgui_sw::Texture texture;
+    texture.width = width;
+    texture.height = height;
+    texture.channels = channels;
+    texture.pixels = new uint8_t[width * height * channels];
+    std::memcpy(texture.pixels, data, channels * width * height);
+    texture.from_file = false;
+    return (ImTextureID)*g_TextureIDs.insert(new imgui_sw::Texture(std::move(texture))).first;
+}
+
+void FreeTexture(ImTextureID texture)
+{
+    auto found = g_TextureIDs.find((imgui_sw::Texture*)texture);
+    if (found != g_TextureIDs.end())
+    {
+        if ((*found)->from_file)
+        {
+            stbi_image_free((*found)->pixels);
+        }
+        else
+        {
+            delete[](*found)->pixels;
+        }
+        g_TextureIDs.erase(found);
+    }
+}
+
+ImVec2 TextureSize(ImTextureID texture)
+{
+    auto& tex = *(imgui_sw::Texture*)texture;
+    return ImVec2((float)tex.width, (float)tex.height);
 }
