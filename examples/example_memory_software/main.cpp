@@ -6,9 +6,6 @@
 #include "imgui_impl_software.h"
 #include "MemoryTexture.hpp"
 
-#include <stb.h>
-#include <stb_image_write.h>
-
 // Main code
 int main(int, char**)
 {
@@ -107,9 +104,6 @@ int main(int, char**)
     ImGui_ImplSW_Shutdown();
     ImGui_ImplMemory_Shutdown();
     ImGui::DestroyContext();
-
-
-    stbi_write_png("sky.png", (int)texture.width, (int)texture.height, 4, texture.pixels, (int)texture.width * 4);
 
     return 0;
 }
