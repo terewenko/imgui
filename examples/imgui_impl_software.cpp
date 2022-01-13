@@ -238,7 +238,7 @@ namespace imgui_sw
         return (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
     }
 
-    inline uint8_t sample_texture(const Texture& texture, const ImVec2& uv)
+    inline uint8_t sample_texture(const Texture& texture, const ImVec2& uv, int channels, int current_channel)
     {
         int tx = static_cast<int>(uv.x * (texture.width - 1.0f) + 0.5f);
         int ty = static_cast<int>(uv.y * (texture.height - 1.0f) + 0.5f);
@@ -249,7 +249,7 @@ namespace imgui_sw
         ty = std::max(ty, 0);
         ty = std::min(ty, texture.height - 1);
 
-        return texture.pixels[ty * texture.width + tx];
+        return texture.pixels[ty * (texture.width * channels) + (tx * channels) + current_channel];
     }
 
     void paint_uniform_rectangle(
@@ -345,7 +345,7 @@ namespace imgui_sw
             current_uv.x = uv_topleft.x;
             for (int x = min_x_i; x < max_x_i; ++x, current_uv.x += delta_uv_per_pixel.x) {
                 uint32_t& target_pixel = target.pixels[y * target.width + x];
-                const uint8_t texel = sample_texture(texture, current_uv);
+                const uint8_t texel = sample_texture(texture, current_uv, 1, 0);
 
                 // The font texture is all black or all white, so optimize for this:
                 if (texel == 0) { continue; }
