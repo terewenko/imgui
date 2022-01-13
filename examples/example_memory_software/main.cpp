@@ -105,6 +105,8 @@ int main(int, char**)
     ImGui_ImplMemory_Shutdown();
     ImGui::DestroyContext();
 
+    delete[] texture.pixels;
+
     return 0;
 }
 
