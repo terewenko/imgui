@@ -15,12 +15,8 @@
 //  2019-08-12: GDI: Add Windows GDI Renderer Support.
 
 #include "imgui.h"
-#include "imgui_impl_gdi.h"
-
-#define NOMINMAX
-#include <Windows.h>
-
-#include <vector>
+#include "imgui_impl_software.h"
+#include "MemoryTexture.hpp"
 
 #include <emmintrin.h> // SSE2
 
@@ -42,10 +38,8 @@
 #pragma once
 
 #include <cstdint>
-
-#include <algorithm>
 #include <cmath>
-#include <vector>
+#include <algorithm>
 
 namespace imgui_sw
 {
@@ -532,6 +526,8 @@ namespace imgui_sw
 
     static Stats s_stats; // TODO: pass as an argument?
 
+    static uint32_t g_BackgroundColor = 0;
+
     /// The buffer is assumed to follow how ImGui packs pixels, i.e. ABGR by default.
     /// Change with IMGUI_USE_BGRA_PACKED_COLOR.
     /// If width/height differs from ImGui::GetIO().DisplaySize then
@@ -571,21 +567,14 @@ namespace imgui_sw
         ImGui::Text("gradient_textured_rectangle_pixels: %7.0f", s_stats.gradient_textured_rectangle_pixels);
     }
 
+    template<typename T1, typename T2, typename T3, typename T4>
+    constexpr auto pack_rgba(T1 r, T2  g, T3  b, T4  a) { return (uint32_t)((uint8_t)(a) << 24 | (uint8_t)(b) << 16 | (uint8_t)(g) << 8 | (uint8_t)(r)); }
+
 } // namespace imgui_sw
 
 // ****************************************************************************
 
-static int old_fb_width = 0;
-static int old_fb_height = 0;
-
-static HDC g_hDC = nullptr;
-static HDC g_hBufferDC = nullptr;
-static HBITMAP g_hBitmap = nullptr;
-static uint32_t* g_PixelBuffer = nullptr;
-static size_t g_PixelBufferSize = 0;
-static HBRUSH g_BackgroundColorBrush = nullptr;
-
-bool ImGui_ImplGDI_Init()
+bool ImGui_ImplSW_Init()
 {
     // Setup back-end capabilities flags
     ImGuiIO& io = ImGui::GetIO();
@@ -597,17 +586,17 @@ bool ImGui_ImplGDI_Init()
     return true;
 }
 
-void ImGui_ImplGDI_Shutdown()
+void ImGui_ImplSW_Shutdown()
 {
     imgui_sw::unbind_imgui_painting();
 }
 
-void ImGui_ImplGDI_NewFrame()
+void ImGui_ImplSW_NewFrame()
 {
     imgui_sw::bind_imgui_painting();
 }
 
-void ImGui_ImplGDI_RenderDrawData(ImDrawData* draw_data)
+void ImGui_ImplSW_RenderDrawData(ImDrawData* draw_data)
 {
     // Avoid rendering when minimized, scale coordinates for retina displays.
     // (screen coordinates != framebuffer coordinates)
@@ -618,111 +607,28 @@ void ImGui_ImplGDI_RenderDrawData(ImDrawData* draw_data)
     if (fb_width == 0 || fb_height == 0)
         return;
 
-    if (old_fb_width != fb_width || old_fb_height != fb_height)
+    ImGuiIO& io = ImGui::GetIO();
+    MemoryTexture* pTexture = reinterpret_cast<MemoryTexture*>(io.ImeWindowHandle);
+    if (!pTexture)
     {
-        // Get the handle of the current window.
-        ImGuiIO& io = ImGui::GetIO();
-        HWND hWnd = reinterpret_cast<HWND>(io.ImeWindowHandle);
-
-        if (g_hDC)
-        {
-            ReleaseDC(hWnd, g_hDC);
-            g_hDC = nullptr;
-        }
-
-        if (g_hBufferDC)
-        {
-            DeleteDC(g_hBufferDC);
-            g_hBufferDC = nullptr;
-        }
-
-        if (g_hBitmap)
-        {
-            DeleteObject(g_hBitmap);
-            g_hBitmap = nullptr;
-            g_PixelBuffer = nullptr;
-            g_PixelBufferSize = 0;
-        }
-
-
-        g_hDC = GetDC(hWnd);
-        if (!g_hDC)
-            return;
-
-        g_hBufferDC = CreateCompatibleDC(g_hDC);
-        if (!g_hBufferDC)
-            return;
-
-        BITMAPINFO BitmapInfo;
-        BitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        BitmapInfo.bmiHeader.biWidth = fb_width;
-        BitmapInfo.bmiHeader.biHeight = -fb_height;
-        BitmapInfo.bmiHeader.biPlanes = 1;
-        BitmapInfo.bmiHeader.biBitCount = 32;
-        BitmapInfo.bmiHeader.biCompression = BI_RGB;
-
-        g_hBitmap = CreateDIBSection(
-            g_hBufferDC,
-            &BitmapInfo,
-            DIB_RGB_COLORS,
-            (void**)&g_PixelBuffer,
-            NULL,
-            0);
-        if (!g_hBitmap)
-            return;
-
-        g_PixelBufferSize = fb_width * fb_height * sizeof(uint32_t);
+        return;
     }
 
-    old_fb_width = fb_width;
-    old_fb_height = fb_height;
-
-    HBITMAP hOldBitmap = reinterpret_cast<HBITMAP>(
-        SelectObject(g_hBufferDC, g_hBitmap));
-
-    if (g_BackgroundColorBrush)
+    for (size_t i = 0, iend = pTexture->height * pTexture->width; i < iend; i++)
     {
-        RECT rc;
-        rc.left = 0;
-        rc.top = 0;
-        rc.right = fb_width;
-        rc.bottom = fb_height;
-
-        FillRect(g_hBufferDC, &rc, g_BackgroundColorBrush);
-    }
-    else
-    {
-        memset(g_PixelBuffer, 0, g_PixelBufferSize);
+        pTexture->pixels[i] = imgui_sw::g_BackgroundColor;
     }
 
-    imgui_sw::paint_imgui(g_PixelBuffer, fb_width, fb_height);
-
-    BitBlt(
-        g_hDC,
-        0,
-        0,
-        fb_width,
-        fb_height,
-        g_hBufferDC,
-        0,
-        0,
-        SRCCOPY);
-
-    SelectObject(g_hBufferDC, hOldBitmap);
+    imgui_sw::paint_imgui(pTexture->pixels, fb_width, fb_height);
 }
 
-void ImGui_ImplGDI_SetBackgroundColor(ImVec4* BackgroundColor)
+void ImGui_ImplSW_SetBackgroundColor(ImVec4* BackgroundColor)
 {
-    if (g_BackgroundColorBrush)
-    {
-        DeleteObject(g_BackgroundColorBrush);
-        g_BackgroundColorBrush = nullptr;
-    }
-
-    g_BackgroundColorBrush = CreateSolidBrush(RGB(
+    imgui_sw::g_BackgroundColor = imgui_sw::pack_rgba(
         BackgroundColor->x * 255.0,
         BackgroundColor->y * 255.0,
-        BackgroundColor->z * 255.0));
+        BackgroundColor->z * 255.0,
+        BackgroundColor->w * 255.0);
 }
 
 

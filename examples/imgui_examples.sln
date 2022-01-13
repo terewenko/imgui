@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.29201.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example_win32_gdi", "example_win32_gdi\example_win32_gdi.vcxproj", "{730C5677-B6EC-4582-A79B-735FCCB72284}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example_memory_software", "example_memory_software\example_memory_software.vcxproj", "{1F380159-2CD8-4C1D-9A10-0B09C2EC788F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -21,6 +23,14 @@ Global
 		{730C5677-B6EC-4582-A79B-735FCCB72284}.Release|Win32.Build.0 = Release|Win32
 		{730C5677-B6EC-4582-A79B-735FCCB72284}.Release|x64.ActiveCfg = Release|x64
 		{730C5677-B6EC-4582-A79B-735FCCB72284}.Release|x64.Build.0 = Release|x64
+		{1F380159-2CD8-4C1D-9A10-0B09C2EC788F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1F380159-2CD8-4C1D-9A10-0B09C2EC788F}.Debug|Win32.Build.0 = Debug|Win32
+		{1F380159-2CD8-4C1D-9A10-0B09C2EC788F}.Debug|x64.ActiveCfg = Debug|x64
+		{1F380159-2CD8-4C1D-9A10-0B09C2EC788F}.Debug|x64.Build.0 = Debug|x64
+		{1F380159-2CD8-4C1D-9A10-0B09C2EC788F}.Release|Win32.ActiveCfg = Release|Win32
+		{1F380159-2CD8-4C1D-9A10-0B09C2EC788F}.Release|Win32.Build.0 = Release|Win32
+		{1F380159-2CD8-4C1D-9A10-0B09C2EC788F}.Release|x64.ActiveCfg = Release|x64
+		{1F380159-2CD8-4C1D-9A10-0B09C2EC788F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
